@@ -1,26 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tic-Tac-Toe</title>
-    <link rel="stylesheet" href="styles/style.css">
-</head>
-<body>
-    <h1>Tic-Tac-Toe Game</h1>
-    <div id="game">
-        <!-- Game grid and other elements will go here -->
-    </div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Tic-Tac-Toe</title>
+        <link rel="stylesheet" href="styles/style.css">
+    </head>
+    <body>
+        <h1>Tic-Tac-Toe Game</h1>
+        <div id="game">
+            <table border="1" id="tttable">
+                <tr>
+                    <td class="tttcell" data-row="0" data-col="0"></td>
+                    <td class="tttcell" data-row="0" data-col="1"></td>
+                    <td class="tttcell" data-row="0" data-col="2"></td>
+                </tr>
+                <tr>
+                    <td class="tttcell" data-row="1" data-col="0"></td>
+                    <td class="tttcell" data-row="1" data-col="1"></td>
+                    <td class="tttcell" data-row="1" data-col="2"></td>
+                </tr>
+                <tr>
+                    <td class="tttcell" data-row="2" data-col="0"></td>
+                    <td class="tttcell" data-row="2" data-col="1"></td>
+                    <td class="tttcell" data-row="2" data-col="2"></td>
+                </tr>
+            </table>
+        </div>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            const socket = io();
 
-        // Handle connection
-        socket.on('connect', () => {
-            console.log('Connected to server');
-        });
+            socket.on('connect', () => {
+                console.log('Connected to server');
+            });
 
-        // Additional client-side socket handlers can be added here
-    </script>
-</body>
+            const winConditions = [
+                [(0, 0), (0, 1), (0, 2)],
+                [(1, 0), (1, 1), (1, 2)],
+                [(2, 0), (2, 1), (2, 2)],
+                [(0, 0), (1, 0), (2, 0)],
+                [(0, 1), (1, 1), (2, 1)],
+                [(0, 2), (1, 2), (2, 2)],
+                [(0, 0), (1, 1), (2, 2)],
+                [(0, 2), (1, 1), (2, 0)]
+            ];
+
+            let game = {
+                currentPlayer: 'X',
+                who: 0,
+                isGameOver: false,
+                plays: {}
+            }
+
+            document.querySelectorAll('.tttcell').forEach(cell => {
+                cell.addEventListener('click', (event) => {
+                    select(event.target);
+                });
+            });
+
+            function select(cell) {
+                const row = cell.getAttribute('data-row');
+                const col = cell.getAttribute('data-col');
+                const pos = `${row}-${col}`;
+
+                if (game.plays[pos]) {
+                    return;
+                } else {
+                    game.plays[pos] = game.currentPlayer;
+                }
+
+                cell.classList.add('selected');
+                cell.appendChild(document.createTextNode(game.currentPlayer));
+                checkWin();
+                togglePlayer();
+                console.log(game);
+            }
+
+            function togglePlayer() {
+                game.currentPlayer = game.currentPlayer === 'X' ? 'O' : 'X';
+                game.who = 1 - game.who;
+            }
+
+            function checkWin() {
+                
+            }
+
+            // Additional client-side socket handlers can be added here
+        </script>
+    </body>
 </html>
