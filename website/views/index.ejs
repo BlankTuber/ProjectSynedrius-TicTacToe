@@ -8,22 +8,25 @@
     </head>
     <body>
         <h1>Tic-Tac-Toe Game</h1>
+        <div id="winnerDiv">
+            <h2 id="winnerDisplay"></h2>
+        </div>
         <div id="game">
             <table border="1" id="tttable">
                 <tr>
-                    <td class="tttcell" data-row="0" data-col="0"></td>
-                    <td class="tttcell" data-row="0" data-col="1"></td>
-                    <td class="tttcell" data-row="0" data-col="2"></td>
+                    <td class="tttcell" data-row="0" data-col="0" data-owner=""></td>
+                    <td class="tttcell" data-row="0" data-col="1" data-owner=""></td>
+                    <td class="tttcell" data-row="0" data-col="2" data-owner=""></td>
                 </tr>
                 <tr>
-                    <td class="tttcell" data-row="1" data-col="0"></td>
-                    <td class="tttcell" data-row="1" data-col="1"></td>
-                    <td class="tttcell" data-row="1" data-col="2"></td>
+                    <td class="tttcell" data-row="1" data-col="0" data-owner=""></td>
+                    <td class="tttcell" data-row="1" data-col="1" data-owner=""></td>
+                    <td class="tttcell" data-row="1" data-col="2" data-owner=""></td>
                 </tr>
                 <tr>
-                    <td class="tttcell" data-row="2" data-col="0"></td>
-                    <td class="tttcell" data-row="2" data-col="1"></td>
-                    <td class="tttcell" data-row="2" data-col="2"></td>
+                    <td class="tttcell" data-row="2" data-col="0" data-owner=""></td>
+                    <td class="tttcell" data-row="2" data-col="1" data-owner=""></td>
+                    <td class="tttcell" data-row="2" data-col="2" data-owner=""></td>
                 </tr>
             </table>
         </div>
@@ -36,14 +39,14 @@
             });
 
             const winConditions = [
-                [(0, 0), (0, 1), (0, 2)],
-                [(1, 0), (1, 1), (1, 2)],
-                [(2, 0), (2, 1), (2, 2)],
-                [(0, 0), (1, 0), (2, 0)],
-                [(0, 1), (1, 1), (2, 1)],
-                [(0, 2), (1, 2), (2, 2)],
-                [(0, 0), (1, 1), (2, 2)],
-                [(0, 2), (1, 1), (2, 0)]
+                [[0, 0], [0, 1], [0, 2]],
+                [[1, 0], [1, 1], [1, 2]],
+                [[2, 0], [2, 1], [2, 2]],
+                [[0, 0], [1, 0], [2, 0]],
+                [[0, 1], [1, 1], [2, 1]],
+                [[0, 2], [1, 2], [2, 2]],
+                [[0, 0], [1, 1], [2, 2]],
+                [[0, 2], [1, 1], [2, 0]]
             ];
 
             let game = {
@@ -64,7 +67,7 @@
                 const col = cell.getAttribute('data-col');
                 const pos = `${row}-${col}`;
 
-                if (game.plays[pos]) {
+                if (game.plays[pos] || game.isGameOver) {
                     return;
                 } else {
                     game.plays[pos] = game.currentPlayer;
@@ -72,7 +75,8 @@
 
                 cell.classList.add('selected');
                 cell.appendChild(document.createTextNode(game.currentPlayer));
-                checkWin();
+                cell.setAttribute('data-owner', game.currentPlayer);
+                checkWin(game.currentPlayer);
                 togglePlayer();
                 console.log(game);
             }
@@ -82,9 +86,28 @@
                 game.who = 1 - game.who;
             }
 
-            function checkWin() {
-                
+            function checkWin(player) {
+                for (const condition of winConditions) {
+                    if (condition.every(([row, col]) => game.plays[`${row}-${col}`] === player)) {
+                        game.isGameOver = true;
+                        showWinner(`${player}`);
+                        return;
+                    }
+                }
+
+                // Check for a tie (if all cells are filled and no winner)
+                if (Object.keys(game.plays).length === 9 && !game.isGameOver) {
+                    game.isGameOver = true;
+                    showWinner("none");
+                }
             }
+            
+            function showWinner(winner) {
+                const winnerMessage = winner === 'none'? 'It\'s a tie!' : `Player ${winner} wins!`;
+                document.getElementById("winnerDisplay").innerText = winnerMessage;
+                document.getElementById("winnerDiv").style.display = "flex";
+            }
+
 
             // Additional client-side socket handlers can be added here
         </script>
