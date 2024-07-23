@@ -3,6 +3,10 @@
     height: 75vh;
 }
 
+h1{
+    text-align: center;
+}
+
 #tttable {
     width: 60%;
     margin: auto;
@@ -47,4 +51,42 @@
     color: white;
     width: 50%;
     height: 50%;
+}
+
+#codeDiv{
+    width: 50%;
+    height: 10vh;
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#codeInput, #codeSubmit{
+    height: 5vh;
+    width: 50%;
+    margin: 0;
+    padding: 0;
+    font-size: 1rem;
+    text-align: center;
+    margin-top: 5px;
+}
+
+#codeSubmit{
+    padding: 2px;
+    background-color: rgb(172, 172, 172);
+    transition-duration: 0.3s;
+    border-radius: 12px;
+}
+
+
+#codeSubmit:hover{
+    cursor: pointer;
+    background-color: rgb(34, 34, 34);
+    color: white;
+}
+
+h2{
+    margin: 0;
 }

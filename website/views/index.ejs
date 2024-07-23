@@ -8,6 +8,8 @@
     </head>
     <body>
         <h1>Tic-Tac-Toe Game</h1>
+        <h2>Current player: <b id="currentPlayer"></b></h2>
+        <h2>You are: <b id="roleDisplay"></b></h2>
         <div id="winnerDiv">
             <h2 id="winnerDisplay"></h2>
         </div>
@@ -30,30 +32,76 @@
                 </tr>
             </table>
         </div>
+
+        <div id="codeDiv">
+            <input type="text" id="codeInput" name="code" placeholder="Game Code">
+            <button id="codeSubmit">Join</button>
+        </div>
         <script src="/socket.io/socket.io.js"></script>
         <script>
             const socket = io();
+            let yourSymbol;
 
             socket.on('connect', () => {
                 console.log('Connected to server');
             });
 
-            const winConditions = [
-                [[0, 0], [0, 1], [0, 2]],
-                [[1, 0], [1, 1], [1, 2]],
-                [[2, 0], [2, 1], [2, 2]],
-                [[0, 0], [1, 0], [2, 0]],
-                [[0, 1], [1, 1], [2, 1]],
-                [[0, 2], [1, 2], [2, 2]],
-                [[0, 0], [1, 1], [2, 2]],
-                [[0, 2], [1, 1], [2, 0]]
-            ];
+            document.getElementById('codeSubmit').addEventListener('click', function() {
+                const code = document.getElementById('codeInput').value.trim();
+                if (code) {
+                    socket.emit('joinGame', code);
+                } else {
+                    alert('Please enter a valid game code.');
+                }
+            });
 
-            let game = {
-                currentPlayer: 'X',
-                who: 0,
-                isGameOver: false,
-                plays: {}
+            socket.on('role', function(role, symbol) {
+                console.log('You are a', role);
+                yourSymbol = symbol; // Store player's symbol
+                document.getElementById('winnerDisplay').innerText = role === 'player' ? `You are ${symbol}` : "You are a spectator";
+                if (symbol) {
+                    document.getElementById('roleDisplay').innerText = symbol;
+                } else {
+                    document.getElementById('roleDisplay').innerText = "spectator";
+                }
+            });
+
+            socket.on('startGame', function(currentPlayer) {
+                document.getElementById('currentPlayer').innerText = `${currentPlayer}`;
+            });
+
+            socket.on('gameState', function(game) {
+                // Update UI based on current game state
+                Object.keys(game.plays).forEach(pos => {
+                    const [row, col] = pos.split('-');
+                    const cell = document.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
+                    cell.classList.add('selected');
+                    cell.textContent = game.plays[pos];
+                    cell.setAttribute('data-owner', game.plays[pos]);
+                });
+            });
+
+            socket.on('updateState', function(row, col, owner) {
+                const cell = document.querySelector(`td[data-row="${row}"][data-col="${col}"]`);
+                cell.classList.add('selected');
+                cell.textContent = owner;
+                cell.setAttribute('data-owner', owner);
+                document.getElementById('currentPlayer').innerText = `${owner === 'X' ? 'O' : 'X'}`;
+            });
+
+            socket.on('gameOver', function(winner) {
+                showWinner(winner === 'Tie' ? "none" : winner);
+            });
+
+            socket.on('playerLeft', function(message) {
+                alert(message); // Notify user about the player leaving
+                document.getElementById('winnerDisplay').innerText = message;
+            });
+
+            function showWinner(winner) {
+                const winnerMessage = winner === 'none' ? "It's a tie!" : `Player ${winner} wins!`;
+                document.getElementById("winnerDisplay").innerText = winnerMessage;
+                document.getElementById("winnerDiv").style.display = "flex";
             }
 
             document.querySelectorAll('.tttcell').forEach(cell => {
@@ -65,51 +113,12 @@
             function select(cell) {
                 const row = cell.getAttribute('data-row');
                 const col = cell.getAttribute('data-col');
-                const pos = `${row}-${col}`;
-
-                if (game.plays[pos] || game.isGameOver) {
-                    return;
-                } else {
-                    game.plays[pos] = game.currentPlayer;
-                }
-
-                cell.classList.add('selected');
-                cell.appendChild(document.createTextNode(game.currentPlayer));
-                cell.setAttribute('data-owner', game.currentPlayer);
-                checkWin(game.currentPlayer);
-                togglePlayer();
-                console.log(game);
-            }
-
-            function togglePlayer() {
-                game.currentPlayer = game.currentPlayer === 'X' ? 'O' : 'X';
-                game.who = 1 - game.who;
-            }
-
-            function checkWin(player) {
-                for (const condition of winConditions) {
-                    if (condition.every(([row, col]) => game.plays[`${row}-${col}`] === player)) {
-                        game.isGameOver = true;
-                        showWinner(`${player}`);
-                        return;
-                    }
-                }
-
-                // Check for a tie (if all cells are filled and no winner)
-                if (Object.keys(game.plays).length === 9 && !game.isGameOver) {
-                    game.isGameOver = true;
-                    showWinner("none");
+                if (!cell.classList.contains('selected') && yourSymbol === document.getElementById('currentPlayer').innerText.split(': ')[1]) {
+                    socket.emit('playMove', document.getElementById('codeInput').value.trim(), row, col);
                 }
             }
-            
-            function showWinner(winner) {
-                const winnerMessage = winner === 'none'? 'It\'s a tie!' : `Player ${winner} wins!`;
-                document.getElementById("winnerDisplay").innerText = winnerMessage;
-                document.getElementById("winnerDiv").style.display = "flex";
-            }
-
-
-            // Additional client-side socket handlers can be added here
         </script>
+
+
     </body>
 </html>
