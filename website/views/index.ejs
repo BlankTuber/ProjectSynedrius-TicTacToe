@@ -113,7 +113,7 @@
             function select(cell) {
                 const row = cell.getAttribute('data-row');
                 const col = cell.getAttribute('data-col');
-                if (!cell.classList.contains('selected') && yourSymbol === document.getElementById('currentPlayer').innerText.split(': ')[1]) {
+                if (!cell.classList.contains('selected') && yourSymbol == document.getElementById('currentPlayer').innerText) {
                     socket.emit('playMove', document.getElementById('codeInput').value.trim(), row, col);
                 }
             }

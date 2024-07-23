@@ -64,14 +64,14 @@ io.on('connection', (socket) => {
 
     socket.on('playMove', (code, row, col) => {
         let room = games[code];
-        if (!room || room.players.indexOf(socket.id) === -1 || room.isGameOver || room.currentPlayer !== room.players.indexOf(socket.id) + 1) return;
-
+        if (!room || room.players.indexOf(socket.id) === -1 || room.isGameOver || room.currentPlayer !== (room.players.indexOf(socket.id) === 0 ? 'X' : 'O')) return;
+    
         const pos = `${row}-${col}`;
         if (room.plays[pos]) return;  // Cell already played
-
+    
         room.plays[pos] = room.currentPlayer;
         io.to(code).emit('updateState', row, col, room.currentPlayer);
-
+    
         // Check for win or tie
         if (checkWin(room.plays, room.currentPlayer)) {
             room.isGameOver = true;
@@ -81,10 +81,11 @@ io.on('connection', (socket) => {
             room.isGameOver = true;
             io.to(code).emit('gameOver', 'Tie');
         }
-
+    
         // Toggle current player
         room.currentPlayer = room.currentPlayer === 'X' ? 'O' : 'X';
     });
+    
 
     socket.on('disconnect', () => {
         // Notify other players in the room about the disconnect
