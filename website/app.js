@@ -123,8 +123,6 @@ Game.prototype.reset = function () {
 };
 
 io.on('connection', (socket) => {
-    console.log(`Client connected: ${socket.id}`);
-
     socket.on('joinGame', (code) => {
         try {
             if (!code) {
