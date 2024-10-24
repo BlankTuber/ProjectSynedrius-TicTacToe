@@ -1,19 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
 
 :root {
-    --primary-color: #3498db; /* Soft blue */
-    --secondary-color: #2ecc71; /* Light green */
-    --accent-color: #f39c12; /* Golden yellow */
-    --neutral-black: #2c3e50; /* Dark greyish-blue */
-    --neutral-white: #ecf0f1; /* Light grey */
-    --subtle-shadow: 0 0 8px rgba(0, 0, 0, 0.2); /* Soft shadow */
+    --halloween-orange: #FF6B1A;
+    --halloween-purple: #6B1A8C;
+    --halloween-black: #1A1A1A;
+    --halloween-green: #4CAF50;
+    --spooky-shadow: 0 0 8px #FF6B1A;
 }
 
 body {
-    background-color: var(--neutral-white);
-    background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5a.5.5 0 1 1-.5.5.5.5 0 0 1 .5-.5z' fill='%233498db' fill-opacity='0.1'/%3E%3C/svg%3E");
-    color: var(--neutral-black);
-    font-family: 'Roboto', sans-serif;
+    background-color: var(--halloween-black);
+    background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5a.5.5 0 1 1-.5.5.5.5 0 0 1 .5-.5z' fill='%236B1A8C' fill-opacity='0.1'/%3E%3C/svg%3E");
+    color: var(--halloween-orange);
+    font-family: 'Creepster', cursive;
     margin: 0;
     padding: 0;
     min-height: 60vh;
@@ -34,7 +33,7 @@ body {
 h1 {
     text-align: center;
     font-size: 3em;
-    text-shadow: 2px 2px 4px var(--primary-color);
+    text-shadow: 2px 2px 4px var(--halloween-purple);
     margin: 10px 0;
     animation: float 3s ease-in-out infinite;
 }
@@ -46,17 +45,17 @@ h1 {
 
 h2 {
     margin: 5px 0;
-    color: var(--primary-color);
-    text-shadow: 1px 1px 2px var(--secondary-color);
+    color: var(--halloween-orange);
+    text-shadow: 1px 1px 2px var(--halloween-purple);
     font-size: 1.5em;
 }
 
 .status-message {
-    color: var(--secondary-color);
+    color: var(--halloween-green);
     font-size: 1.2em;
     height: 30px;
     margin: 5px 0;
-    text-shadow: 0 0 5px var(--secondary-color);
+    text-shadow: 0 0 5px var(--halloween-green);
 }
 
 #game {
@@ -73,35 +72,35 @@ h2 {
     margin: auto;
     border-collapse: separate;
     border-spacing: 5px;
-    background-color: rgba(52, 152, 219, 0.2); /* Light blue background */
+    background-color: rgba(107, 26, 140, 0.2);
     border-radius: 15px;
-    box-shadow: 0 0 20px var(--primary-color);
+    box-shadow: 0 0 20px var(--halloween-purple);
 }
 
 .tttcell {
     width: 33.33%;
     height: 33.33%;
-    background-color: var(--neutral-white);
-    color: var(--neutral-black);
+    background-color: var(--halloween-black);
+    color: var(--halloween-orange);
     font-size: 60px;
     text-align: center;
-    font-family: 'Roboto', sans-serif;
-    border: 2px solid var(--primary-color);
+    font-family: 'Creepster', cursive;
+    border: 2px solid var(--halloween-purple);
     border-radius: 10px;
     transition: all 0.3s ease;
-    box-shadow: inset 0 0 10px rgba(52, 152, 219, 0.5);
+    box-shadow: inset 0 0 10px rgba(107, 26, 140, 0.5);
 }
 
 .tttcell:hover {
-    background-color: var(--primary-color);
+    background-color: var(--halloween-purple);
     cursor: pointer;
     transform: scale(1.05);
-    box-shadow: 0 0 15px var(--accent-color);
+    box-shadow: 0 0 15px var(--halloween-orange);
 }
 
 .tttcell.selected {
-    background-color: rgba(52, 152, 219, 0.8);
-    text-shadow: 0 0 10px var(--accent-color);
+    background-color: rgba(107, 26, 140, 0.8);
+    text-shadow: 0 0 10px var(--halloween-orange);
     animation: pulse 2s infinite;
 }
 
@@ -114,12 +113,12 @@ h2 {
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    background-color: rgba(44, 62, 80, 0.95);
+    background-color: rgba(26, 26, 26, 0.95);
     width: 300px;
     padding: 20px;
-    border: 3px solid var(--primary-color);
+    border: 3px solid var(--halloween-purple);
     border-radius: 20px;
-    box-shadow: 0 0 30px var(--accent-color);
+    box-shadow: 0 0 30px var(--halloween-orange);
     z-index: 1000;
 }
 
@@ -130,22 +129,22 @@ h2 {
 .action-button {
     padding: 10px 20px;
     font-size: 1.2rem;
-    font-family: 'Roboto', sans-serif;
-    background-color: var(--primary-color);
-    color: var(--neutral-white);
+    font-family: 'Creepster', cursive;
+    background-color: var(--halloween-purple);
+    color: var(--halloween-orange);
     border: none;
     border-radius: 8px;
     transition: all 0.3s ease;
-    box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+    box-shadow: 0 0 10px rgba(255, 107, 26, 0.3);
     margin: 10px 0;
     cursor: pointer;
 }
 
 .action-button:hover {
-    background-color: var(--accent-color);
-    color: var(--neutral-black);
+    background-color: var(--halloween-orange);
+    color: var(--halloween-black);
     transform: scale(1.05);
-    box-shadow: 0 0 15px var(--primary-color);
+    box-shadow: 0 0 15px var(--halloween-purple);
 }
 
 #codeDiv {
@@ -158,9 +157,9 @@ h2 {
     width: 200px;
     font-size: 1rem;
     text-align: center;
-    background-color: var(--neutral-white);
-    border: 2px solid var(--primary-color);
-    color: var(--neutral-black);
+    background-color: var(--halloween-black);
+    border: 2px solid var(--halloween-purple);
+    color: var(--halloween-orange);
     border-radius: 8px;
     margin-right: 10px;
 }
@@ -172,9 +171,9 @@ h2 {
 }
 
 @keyframes pulse {
-    0% { text-shadow: 0 0 10px var(--accent-color); }
-    50% { text-shadow: 0 0 20px var(--accent-color); }
-    100% { text-shadow: 0 0 10px var(--accent-color); }
+    0% { text-shadow: 0 0 10px var(--halloween-orange); }
+    50% { text-shadow: 0 0 20px var(--halloween-orange); }
+    100% { text-shadow: 0 0 10px var(--halloween-orange); }
 }
 
 @media (max-width: 768px) {
