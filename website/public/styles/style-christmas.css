@@ -1,0 +1,196 @@
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap');
+
+:root {
+    --christmas-red: #ff0080;
+    --christmas-green: #04c555;
+    --christmas-gold: #FFD700;
+    --christmas-white: #FFFFFF;
+    --festive-shadow: 0 0 8px #c8102f6e;
+}
+
+body {
+    background-color: var(--christmas-green);
+    background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5a.5.5 0 1 1-.5.5.5.5 0 0 1 .5-.5z' fill='%23FFD700' fill-opacity='0.1'/%3E%3C/svg%3E");
+    color: var(--christmas-red);
+    font-family: 'Great Vibes', cursive;
+    margin: 0;
+    padding: 0;
+    min-height: 60vh;
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+h1 {
+    text-align: center;
+    font-size: 3em;
+    text-shadow: 2px 2px 4px var(--christmas-gold);
+    margin: 10px 0;
+    animation: float 3s ease-in-out infinite;
+}
+
+.game-info {
+    text-align: center;
+    margin: 10px 0;
+}
+
+h2 {
+    margin: 5px 0;
+    color: var(--christmas-red);
+    text-shadow: 1px 1px 2px var(--christmas-gold);
+    font-size: 1.5em;
+}
+
+.status-message {
+    color: var(--christmas-gold);
+    font-size: 1.2em;
+    height: 30px;
+    margin: 5px 0;
+    text-shadow: 0 0 5px var(--christmas-gold);
+}
+
+#game {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px 0;
+}
+
+#tttable {
+    width: 400px;
+    height: 400px;
+    margin: auto;
+    border-collapse: separate;
+    border-spacing: 5px;
+    background-color: rgba(200, 16, 46, 0.2);
+    border-radius: 15px;
+    box-shadow: 0 0 20px var(--christmas-gold);
+}
+
+.tttcell {
+    width: 33.33%;
+    height: 33.33%;
+    background-color: var(--christmas-green);
+    color: var(--christmas-red);
+    font-size: 60px;
+    text-align: center;
+    font-family: 'Great Vibes', cursive;
+    border: 2px solid var(--christmas-gold);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 0 10px rgba(200, 16, 46, 0.5);
+}
+
+.tttcell:hover {
+    background-color: var(--christmas-red);
+    cursor: pointer;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px var(--christmas-gold);
+}
+
+.tttcell.selected {
+    background-color: rgba(200, 16, 46, 0.8);
+    text-shadow: 0 0 10px var(--christmas-red);
+    animation: pulse 2s infinite;
+}
+
+#winnerDiv {
+    position: fixed;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background-color: rgba(255, 255, 255, 0.95);
+    width: 300px;
+    padding: 20px;
+    border: 3px solid var(--christmas-gold);
+    border-radius: 20px;
+    box-shadow: 0 0 30px var(--christmas-red);
+    z-index: 1000;
+}
+
+.winner-content {
+    width: 100%;
+}
+
+.action-button {
+    padding: 10px 20px;
+    font-size: 1.2rem;
+    font-family: 'Great Vibes', cursive;
+    background-color: var(--christmas-gold);
+    color: var(--christmas-red);
+    border: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.action-button:hover {
+    background-color: var(--christmas-red);
+    color: var(--christmas-white);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px var(--christmas-gold);
+}
+
+#codeDiv {
+    text-align: center;
+    margin: 10px 0;
+}
+
+#codeInput {
+    padding: 10px;
+    width: 200px;
+    font-size: 1rem;
+    text-align: center;
+    background-color: var(--christmas-green);
+    border: 2px solid var(--christmas-gold);
+    color: var(--christmas-red);
+    border-radius: 8px;
+    margin-right: 10px;
+}
+
+@keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+}
+
+@keyframes pulse {
+    0% { text-shadow: 0 0 10px var(--christmas-red); }
+    50% { text-shadow: 0 0 20px var(--christmas-red); }
+    100% { text-shadow: 0 0 10px var(--christmas-red); }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    h1 {
+        font-size: 2em;
+    }
+    
+    #tttable {
+        width: 300px;
+        height: 300px;
+    }
+    
+    .tttcell {
+        font-size: 40px;
+    }
+}

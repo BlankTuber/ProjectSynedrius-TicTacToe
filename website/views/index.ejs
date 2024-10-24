@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Spooky Tic-Tac-Toe</title>
+        <title id="siteTitle">Tic-Tac-Toe</title>
         <link id="cssLink" rel="stylesheet" href="styles/style.css">
     </head>
     <body>
@@ -51,20 +51,39 @@
         <script src="/socket.io/socket.io.js"></script>
         <script src="/js/game.js"></script>
         <script>
-            const h1 = document.getElementById("veryCoolTitle"); // Corrected 'getElementByid' to 'getElementById'
+            const h1 = document.getElementById("veryCoolTitle");
             const cssLink = document.getElementById("cssLink");
+            const siteTitle = document.getElementById("siteTitle");
         
             const currentDate = new Date();
-            const currentMonth = currentDate.getMonth(); // getMonth() returns 0 for January, 9 for October
+            const currentMonth = currentDate.getMonth(); // getMonth() returns 0 for January, 11 for December
         
-            if (currentMonth === 9) { // 9 corresponds to October
-                // Change the title to "Spooky " + current title
-                h1.textContent = "Spooky " + h1.textContent;
+            // Define themes and titles based on the month
+            const themes = {
+                // Seasons
+                0: { theme: "styles/style-winter.css", title: "Winter Wonderland" }, // January
+                1: { theme: "styles/style-winter.css", title: "Winter Wonderland" }, // February
+                2: { theme: "styles/style-spring.css", title: "Spring Fling" },      // March
+                3: { theme: "styles/style-spring.css", title: "Spring Fling" },      // April
+                4: { theme: "styles/style-spring.css", title: "Spring Fling" },      // May
+                5: { theme: "styles/style-summer.css", title: "Summer Vibes" },      // June
+                6: { theme: "styles/style-summer.css", title: "Summer Vibes" },      // July
+                7: { theme: "styles/style-summer.css", title: "Summer Vibes" },      // August
+                8: { theme: "styles/style-autumn.css", title: "Autumn Leaves" },     // September
+                9: { theme: "styles/style-halloween.css", title: "Spooky Halloween" },// October
+                10: { theme: "styles/style-autumn.css", title: "Autumn Leaves" },    // November
+                11: { theme: "styles/style-winter.css", title: "Winter Wonderland" }  // December
+            };
         
-                // Change the stylesheet to the Halloween version
-                cssLink.href = "styles/style-halloween.css";
+            // Check if current month corresponds to a season or special occasion
+            if (themes[currentMonth]) {
+                const { theme, title } = themes[currentMonth];
+        
+                // Change the stylesheet and titles
+                cssLink.href = theme;
+                h1.textContent = title + " " + h1.textContent;
+                siteTitle.textContent = title + " " + siteTitle.textContent;
             }
-        </script>
-        
+        </script>        
     </body>
 </html>
