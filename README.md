@@ -1,6 +1,3 @@
-# ProjectSynedrius
-The website that combines other websites :P
+# ProjectSynedrius TicTacToe
 
-- Wiki (Eg. Fandom)
-- Forum (Eg. Reddit)
-- Live messaging (Eg. Discord)
+Fun tic tac toe game
