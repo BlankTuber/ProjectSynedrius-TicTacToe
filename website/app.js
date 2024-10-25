@@ -22,6 +22,8 @@ app.use('/api/', apiRoutes);
 // Socket.IO
 const gameSocket = require('./sockets/gameSocket');
 gameSocket(io);
+// const discordSocket = require('./sockets/discordSocket');
+// discordSocket(io);
 
 const PORT = 8080;
 server.listen(PORT, () => {

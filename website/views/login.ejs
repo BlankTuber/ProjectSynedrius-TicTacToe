@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 16px;
+            color: #333;
+            text-align: center;
+        }
+
+        /* Form Container */
+        .login-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* Form Label and Input */
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        /* Button Styles */
+        button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            color: #fff;
+            background-color: #4a90e2;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #357ab8;
+        }
+        .error-message{
+            color: red;
+            margin-top: 10px;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Log in to the Discord Bot Interface</h1>
+        <form action="/discord" method="post">
+            <label for="code">Enter Code</label>
+            <input type="password" id="code" name="code" required>
+            <button type="submit">Log In</button>
+        </form>
+        <% if (error) { %>
+            <div class="error-message">
+                <%= error %>
+            </div>
+            <% } %>
+    </div>
+</body>
+</html>
