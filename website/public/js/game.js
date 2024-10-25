@@ -11,6 +11,7 @@ const winnerDiv = document.getElementById('winnerDiv');
 const codeInput = document.getElementById('codeInput');
 const codeSubmit = document.getElementById('codeSubmit');
 const rematchButton = document.getElementById('rematchButton');
+const dontRematchButton = document.getElementById('dontRematchButton');
 const disconnectButton = document.createElement('button');
 
 // Add a Disconnect button
@@ -19,45 +20,42 @@ disconnectButton.classList.add('action-button');
 disconnectButton.style.display = 'none';  // Initially hidden
 document.body.appendChild(disconnectButton);  // Append to the body
 
-
 async function playWin() {
     const winAudio = new Audio('audio/win.mp3');
     winAudio.volume = 0.5; // Louder than background loop
-    winAudio.play();
+    await winAudio.play();
 }
 
 async function playLose() {
     const loseAudio = new Audio('audio/lose.mp3');
     loseAudio.volume = 0.5; // Slightly louder than background loop
-    loseAudio.play();
+    await loseAudio.play();
 }
 
 async function playDraw() {
     const drawAudio = new Audio('audio/draw.mp3');
     drawAudio.volume = 0.5; // A bit louder than background loop
-    drawAudio.play();
+    await drawAudio.play();
 }
 
 async function playNotif() {
     const notificationAudio = new Audio('audio/notif.mp3');
     notificationAudio.volume = 0.4; // Same as background loop
-    notificationAudio.play();
+    await notificationAudio.play();
 }
 
 async function playSelect() {
     const selectAudio = new Audio('audio/select.mp3');
     selectAudio.volume = 0.25; // Slightly quieter than background loop
-    selectAudio.play();
+    await selectAudio.play();
 }
 
 const bgAudio = new Audio('audio/loopbg.mp3');
 async function playLoopbg() {
-    bgAudio.volume = 0.3; // Background loop at 50%
+    bgAudio.volume = 0.3; // Background loop at 30%
     bgAudio.loop = true;
-    bgAudio.play();
+    await bgAudio.play();
 }
-
-
 
 // Connection event
 socket.on('connect', () => {
@@ -79,9 +77,22 @@ codeSubmit.addEventListener('click', () => {
 
 rematchButton.addEventListener('click', () => {
     if (gameCode) {
-        socket.emit('requestRematch', gameCode);
+        socket.emit('rematchRequest', gameCode);  // Updated event name
         winnerDiv.style.display = 'none';
         readyStatus.textContent = 'Waiting for opponent to accept rematch...';
+    }
+});
+
+dontRematchButton.addEventListener('click', () => {
+    if (gameCode) {
+        socket.disconnect();
+        bgAudio.pause();
+        readyStatus.textContent = 'You have disconnected.';
+        setTimeout(() => {
+            readyStatus.textContent = '';
+            window.location.reload();
+        }, 1000);
+        disconnectButton.style.display = 'none';
     }
 });
 
@@ -157,7 +168,7 @@ socket.on('gameOver', function(winner) {
     const message = winner === 'Tie' ? "It's a Tie!" : `Player ${winner} wins!`;
     winnerDisplay.innerText = message;
     winnerDiv.style.display = 'flex';
-    rematchButton.style.display = 'block';
+    rematchButton.style.display = 'block'; // Show rematch button when game is over
 });
 
 socket.on('playerLeft', function(message) {
