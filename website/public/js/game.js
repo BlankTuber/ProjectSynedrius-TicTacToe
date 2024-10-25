@@ -52,7 +52,7 @@ async function playSelect() {
 
 const bgAudio = new Audio('audio/loopbg.mp3');
 async function playLoopbg() {
-    bgAudio.volume = 0.3; // Background loop at 30%
+    bgAudio.volume = 0.15; // Background loop at 30%
     bgAudio.loop = true;
     await bgAudio.play();
 }
