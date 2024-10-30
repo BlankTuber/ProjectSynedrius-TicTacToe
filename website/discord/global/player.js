@@ -138,6 +138,15 @@ class Player {
             }
         } else {
             console.log('Queue is empty, nothing to play.');
+            this.currentOutputIndex = 0;
+            // Delete the previous output files if they exist
+            const outputFiles = ['./ytdlp-audio/output1.mp3', './ytdlp-audio/output2.mp3'];
+            outputFiles.forEach(file => {
+                if (fs.existsSync(file)) {
+                    fs.unlinkSync(file); // Delete the file
+                    console.log(`Deleted existing file: ${file}`);
+                }
+            });
         }
     }
 
