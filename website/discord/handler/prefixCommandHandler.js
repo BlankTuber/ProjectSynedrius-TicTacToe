@@ -1,6 +1,6 @@
 module.exports = {
     init: (client) => {
-        const prefix = '!'; // Choose your preferred prefix
+        const prefix = '--'; // Choose your preferred prefix
         client.on('messageCreate', async message => {
             if (message.author.bot || !message.content.startsWith(prefix)) return;
 
