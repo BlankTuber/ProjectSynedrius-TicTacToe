@@ -23,7 +23,6 @@
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
-    "ffmpeg-static": "^5.2.0",
     "mongoose": "^8.5.1",
     "opusscript": "^0.0.8",
     "socket.io": "^4.7.5",

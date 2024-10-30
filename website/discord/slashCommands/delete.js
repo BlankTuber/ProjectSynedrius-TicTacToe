@@ -17,23 +17,39 @@ module.exports = {
     async execute(interaction) {
         const amount = interaction.options.getInteger('amount');
 
+        // Defer the reply immediately
+        await interaction.deferReply({ ephemeral: true });
+
         try {
-        // Attempt to bulk delete messages
-        const messages = await interaction.channel.bulkDelete(amount, true);
-        console.log(`Bulk deleted ${messages.size} messages.`);
+            let totalDeleted = 0;
 
-        // If the bulk delete didn't delete the full amount, delete the rest individually
-        if (messages.size < amount) {
-            const remainingAmount = amount - messages.size;
-            const remainingMessages = await interaction.channel.messages.fetch({ limit: remainingAmount });
-            await interaction.channel.bulkDelete(remainingMessages, true);
-            console.log(`Deleted the remaining ${remainingAmount} messages.`);
-        }
+            // Fetch messages first
+            const messages = await interaction.channel.messages.fetch({ limit: amount });
 
-        await interaction.reply(`Deleted ${amount} messages.`);
+            if (messages.size === 0) {
+                await interaction.editReply('There are no messages to delete.');
+                return;
+            }
+
+            // Attempt to bulk delete messages
+            const bulkDeleted = await interaction.channel.bulkDelete(messages, true);
+            totalDeleted += bulkDeleted.size;
+
+            // If there are remaining messages that couldn't be bulk deleted, delete them individually
+            const remainingMessages = messages.filter(msg => !bulkDeleted.has(msg.id));
+            for (const msg of remainingMessages.values()) {
+                try {
+                    await msg.delete();
+                    totalDeleted++;
+                } catch (error) {
+                    console.error('Error deleting individual message:', error);
+                }
+            }
+
+            await interaction.editReply(`Successfully deleted ${totalDeleted} message(s).`);
         } catch (error) {
-        console.error('Error deleting messages:', error);
-        await interaction.reply('There was an error deleting the messages.');
+            console.error('Error deleting messages:', error);
+            await interaction.editReply('There was an error while deleting messages. Some messages may be too old to delete.');
         }
     },
 };

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, VoiceConnectionStatus } = require('discord.js');
 const player = require('../global/player');
 
 module.exports = {
@@ -28,17 +28,33 @@ module.exports = {
                 return interaction.editReply('You need to be in a voice channel to use this command!');
             }
 
-            // Join the voice channel
-            await player.join(voiceChannel);
+            // Check if the bot is already in a voice channel
+            const botVoiceConnection = interaction.guild.members.me.voice.channel;
+            
+            // Join the voice channel only if not already connected to the user's voice channel
+            if (!botVoiceConnection || botVoiceConnection.id !== voiceChannel.id) {
+                await player.join(voiceChannel);
+            }
 
             // Add the playlist
-            await player.addPlaylist(url, maxSongs);
+            console.log("Adding to playlist...");
+            await interaction.editReply('Fetching playlist information...');
+            
+            const addedSongs = await player.addPlaylist(url, maxSongs);
             const queue = player.getQueue();
-            const queueList = queue.map((song, index) => `${index + 1}. ${song}`).join('\n');
-            await interaction.editReply(`Added up to ${maxSongs} songs from the playlist to the queue.\n\nCurrent queue:\n${queueList}`);
+            const queueList = queue.slice(0, 10).map((song, index) => `${index + 1}. ${song}`).join('\n');
+            
+            let replyMessage = `Added ${addedSongs} songs from the playlist to the queue.`;
+            if (queue.length > 10) {
+                replyMessage += `\n\nShowing first 10 songs in queue:\n${queueList}\n...and ${queue.length - 10} more.`;
+            } else {
+                replyMessage += `\n\nCurrent queue:\n${queueList}`;
+            }
+            
+            await interaction.editReply(replyMessage);
         } catch (error) {
             console.error('Error executing addplaylist command:', error);
-            await interaction.editReply('There was an error while adding the playlist.');
+            await interaction.editReply('There was an error while adding the playlist. Please try again later.');
         }
     },
 };
