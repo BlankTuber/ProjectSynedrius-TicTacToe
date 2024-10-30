@@ -4,6 +4,7 @@ const socketIO = require('socket.io');
 const path = require('path');
 const { Client, GatewayIntentBits } = require('discord.js');
 require('dotenv').config(); // Load environment variables
+const fs = require('fs');
 
 const app = express();
 const server = http.createServer(app);
@@ -52,6 +53,15 @@ client.on('error', (err) => {
 })
 
 
+// Delete the previous output file if it exists
+if (fs.existsSync("./ytdlp-audio/output1.mp3")) {
+    fs.unlinkSync("./ytdlp-audio/output1.mp3"); // Delete the file
+}
+
+// Delete the previous output file if it exists
+if (fs.existsSync("./ytdlp-audio/output2.mp3")) {
+    fs.unlinkSync("./ytdlp-audio/output2.mp3"); // Delete the file
+}
 
 // const discordSocket = require('./sockets/discordSocket');
 // discordSocket(io);
