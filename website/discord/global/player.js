@@ -8,7 +8,7 @@ const {
     joinVoiceChannel,
 } = require('@discordjs/voice');
 const { exec } = require('child_process');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
 const util = require('util');
 const execPromise = util.promisify(exec);
@@ -38,7 +38,7 @@ class Player {
         });
 
         // Ensure output directory exists
-        fs.mkdir(this.outputDir, { recursive: true }).catch(console.error);
+        fs.promises.mkdir(this.outputDir, { recursive: true }).catch(console.error);
     }
 
     join(channel) {
@@ -126,7 +126,7 @@ class Player {
         if (this.queue.length > 0) {
             const nextOutputIndex = (this.currentOutputIndex + 1) % 2;
             try {
-                await fs.access(this.outputFiles[nextOutputIndex]);
+                await fs.promises.access(this.outputFiles[nextOutputIndex]);
                 const resource = createAudioResource(this.outputFiles[nextOutputIndex]);
                 this.player.play(resource);
                 this.currentOutputIndex = nextOutputIndex;
@@ -137,16 +137,18 @@ class Player {
                 await this.downloadAndPlay();
             }
         } else {
-            console.log('Queue is empty, nothing to play.');
-            this.currentOutputIndex = 0;
-            // Delete the previous output files if they exist
-            const outputFiles = ['./ytdlp-audio/output1.mp3', './ytdlp-audio/output2.mp3'];
-            outputFiles.forEach(file => {
-                if (fs.existsSync(file)) {
-                    fs.unlinkSync(file); // Delete the file
-                    console.log(`Deleted existing file: ${file}`);
-                }
-            });
+            setTimeout(() => {
+                console.log('Queue is empty, nothing to play.');
+                this.currentOutputIndex = 0;
+                // Delete the previous output files if they exist
+                const outputFiles = ['./ytdlp-audio/output1.mp3', './ytdlp-audio/output2.mp3'];
+                outputFiles.forEach(file => {
+                    if (fs.existsSync(file)) {
+                        fs.unlinkSync(file); // Delete the file
+                        console.log(`Deleted existing file: ${file}`);
+                    }
+                });
+            }, 1000);
         }
     }
 
@@ -174,7 +176,7 @@ class Player {
 
     async createAudioResource(url, outputFilePath = this.outputFiles[this.currentOutputIndex]) {
         return new Promise((resolve, reject) => {
-            fs.unlink(outputFilePath).catch(() => {}).then(() => {
+            fs.promises.unlink(outputFilePath).catch(() => {}).then(() => {
                 console.log(`Starting download for: ${url}`);
                 const command = `yt-dlp -f bestaudio -o "${outputFilePath}" "${url}"`;
                 const ytDlpProcess = exec(command);
