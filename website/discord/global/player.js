@@ -24,8 +24,7 @@ const CONFIG = {
     VIDEO_INFO_TIMEOUT: 10000,
     MAX_PLAYLIST_SONGS: 30,
     VOLUME_MULTIPLIER: 100,
-    INACTIVITY_TIMEOUT: 5 * 60 * 1000,
-    MAX_QUEUE_AMOUNT: 150,
+    INACTIVITY_TIMEOUT: 5 * 60 * 1000  // 5 minutes in milliseconds
 };
 
 class Player {
@@ -108,10 +107,6 @@ class Player {
 
     async play(url) {
         this.stopInactivityTimer();
-        if (this.queue.length >= CONFIG.MAX_QUEUE_AMOUNT) {
-            console.error('Too many queued songs');
-            return;
-        }
         const videoInfo = await this.getVideoInfo(url);
         if (!videoInfo) {
             console.error('Failed to get video info');
@@ -331,22 +326,14 @@ class Player {
                     continue;
                 }
     
-                // Check if the next output file is in use
-                const nextOutputFile = this.outputFiles[(this.currentOutputIndex + 1) % 2];
-                const isOutputInUse = await this.isFileInUse(nextOutputFile);
-    
                 if (!this.isPlaying && !this.isDownloading && !firstSongAdded) {
                     // Play the first song immediately and set firstSongAdded to true
                     await this.play(videoUrl);
                     firstSongAdded = true;
                 } else {
-                    // Queue subsequent songs, but only if it's safe to download
-                    if (!isOutputInUse) {
-                        this.queue.push({ url: videoUrl, info: videoInfo });
-                        console.log(`Added to queue: ${videoInfo.title}`);
-                    } else {
-                        console.log(`Skipping download for ${videoInfo.title}, output file in use.`);
-                    }
+                    // Queue subsequent songs
+                    this.queue.push({ url: videoUrl, info: videoInfo });
+                    console.log(`Added to queue: ${videoInfo.title}`);
     
                     // Start downloading the next song in queue if none is currently downloading
                     if (!this.isDownloading && this.queue.length <= 2) {
@@ -364,24 +351,9 @@ class Player {
         }
     }
     
-    // Helper method to check if a file is in use
-    async isFileInUse(filePath) {
-        try {
-            await fs.promises.access(filePath, fs.constants.F_OK);
-            // Attempt to rename the file to check if it's in use
-            const tempFilePath = `${filePath}.temp`;
-            await fs.promises.rename(filePath, tempFilePath);
-            // If successful, rename it back
-            await fs.promises.rename(tempFilePath, filePath);
-            return false; // File is not in use
-        } catch (error) {
-            if (error.code === 'EBUSY' || error.code === 'ENOTEMPTY') {
-                return true; // File is in use
-            }
-            return false; // Other errors mean file is not in use
-        }
-    }
     
+    
+
     async createAudioResource(url, outputFilePath = this.outputFiles[this.currentOutputIndex]) {
         return new Promise((resolve, reject) => {
             fs.promises.unlink(outputFilePath).catch(() => {}).then(() => {
@@ -414,7 +386,6 @@ class Player {
             });
         });
     }
-    
     
 
     setVolume(volume) {
