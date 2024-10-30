@@ -23,7 +23,8 @@ const CONFIG = {
     DOWNLOAD_COOLDOWN: 1000,
     VIDEO_INFO_TIMEOUT: 10000,
     MAX_PLAYLIST_SONGS: 30,
-    VOLUME_MULTIPLIER: 100 // Added for yt-dlp volume control
+    VOLUME_MULTIPLIER: 100,
+    INACTIVITY_TIMEOUT: 5 * 60 * 1000  // 5 minutes in milliseconds
 };
 
 class Player {
@@ -31,6 +32,7 @@ class Player {
         this.player = createAudioPlayer();
         this.queue = [];
         this.connection = null;
+        this.inactivityTimer = null;
         this.outputFiles = ['output1.mp3', 'output2.mp3'].map(file => 
             path.join(CONFIG.OUTPUT_DIR, file)
         );
@@ -48,8 +50,10 @@ class Player {
         this.player.on(AudioPlayerStatus.Playing, () => {
             console.log('Audio is now playing!');
             this.isPlaying = true;
-            this.tryDownloadNext();
+            this.downloadNext(); // Immediately download the next song in queue
         });
+        
+        
 
         this.player.on(AudioPlayerStatus.Idle, () => {
             console.log('Audio has finished playing!');
@@ -102,25 +106,26 @@ class Player {
     }
 
     async play(url) {
+        this.stopInactivityTimer();
         const videoInfo = await this.getVideoInfo(url);
         if (!videoInfo) {
             console.error('Failed to get video info');
             return;
         }
-
+    
         if (videoInfo.duration > CONFIG.MAX_SONG_DURATION) {
             console.error(`Song exceeds ${CONFIG.MAX_SONG_DURATION} second limit: ${videoInfo.duration} seconds`);
             return;
         }
-
+    
         this.queue.push({ url, info: videoInfo });
-
+    
+        // Only download and play if not already playing or downloading
         if (!this.isPlaying && !this.isDownloading) {
             await this.downloadAndPlay();
-        } else if (!this.isDownloading && this.queue.length === 2) {
-            await this.downloadNext();
         }
     }
+    
 
     async getVideoInfo(url) {
         try {
@@ -132,10 +137,16 @@ class Player {
                 thumbnail: info.thumbnail
             };
         } catch (error) {
-            console.error('Error getting video info:', error);
-            return null;
+            // Check if the error is related to YouTube Premium restrictions
+            if (error.stderr && error.stderr.includes('only available to Music Premium members')) {
+                console.error(`Video is restricted to Music Premium members: ${url}`);
+            } else {
+                console.error('Error getting video info:', error);
+            }
+            return null; // Return null to signal that this video should be skipped
         }
     }
+    
 
     async getVideoInfoWithTimeout(url) {
         return new Promise(async (resolve, reject) => {
@@ -181,25 +192,58 @@ class Player {
         if (this.queue.length > 0) {
             const currentOutputFile = this.outputFiles[this.currentOutputIndex];
             await this.deleteFileWithRetry(currentOutputFile);
-            
+    
             this.currentOutputIndex = (this.currentOutputIndex + 1) % 2;
             const nextOutputFile = this.outputFiles[this.currentOutputIndex];
-            
+    
             try {
                 await fs.promises.access(nextOutputFile);
-                const resource = createAudioResource(nextOutputFile);
-                resource.volume?.setVolume(this.volume);
+                const resource = createAudioResource(fs.createReadStream(nextOutputFile), {
+                    inlineVolume: true
+                });
+                resource.volume?.setVolume(this.volume);  // Set the desired volume level
+    
                 this.player.play(resource);
                 this.queue.shift();
-                this.tryDownloadNext();
+                this.downloadNext();
             } catch (error) {
                 console.log('Next song not pre-downloaded, downloading now...');
                 await this.downloadAndPlay();
             }
         } else {
             this.handleEmptyQueue();
+            this.startInactivityTimer();
         }
     }
+
+    startInactivityTimer() {
+        // Clear any existing timer
+        if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+    
+        // Set a new timer to leave the voice channel after inactivity
+        this.inactivityTimer = setTimeout(() => {
+            this.leaveChannel();
+        }, CONFIG.INACTIVITY_TIMEOUT);
+    }
+    
+    stopInactivityTimer() {
+        if (this.inactivityTimer) {
+            clearTimeout(this.inactivityTimer);
+            this.inactivityTimer = null;
+        }
+    }
+
+    leaveChannel() {
+        console.log("Inactivity timeout reached. Leaving the voice channel.");
+        if (this.connection) {
+            this.connection.destroy();
+            this.connection = null;
+        }
+    }
+    
+    
+    
+    
 
     async handleEmptyQueue() {
         console.log('Queue is empty, nothing to play.');
@@ -254,98 +298,87 @@ class Player {
             console.log('Already processing a playlist, please wait...');
             return;
         }
-
+    
         CONFIG.MAX_PLAYLIST_SONGS = maxsongs;
-
         this.playlistProcessing = true;
+    
         try {
             const { stdout } = await execPromise(`yt-dlp -J --flat-playlist "${url}"`);
             const playlistInfo = JSON.parse(stdout);
-
+    
             if (!playlistInfo.entries || playlistInfo.entries.length === 0) {
                 console.error('No videos found in the playlist');
                 return;
             }
-
+    
             const entries = playlistInfo.entries.slice(0, CONFIG.MAX_PLAYLIST_SONGS);
             console.log(`Processing playlist with ${entries.length} songs...`);
-
-            // Process first song immediately
-            const firstEntry = entries[0];
-            const firstVideoUrl = `https://www.youtube.com/watch?v=${firstEntry.id}`;
-            const firstVideoInfo = await this.getVideoInfo(firstVideoUrl);
-            
-            if (firstVideoInfo && firstVideoInfo.duration <= CONFIG.MAX_SONG_DURATION) {
-                await this.play(firstVideoUrl);
-            }
-
-            // Process second song immediately
-            const secondEntry = entries[1];
-            const secondVideoUrl = `https://www.youtube.com/watch?v=${secondEntry.id}`;
-            const secondVideoInfo = await this.getVideoInfo(secondVideoUrl);
-            
-            if (secondVideoInfo && secondVideoInfo.duration <= CONFIG.MAX_SONG_DURATION) {
-                await this.play(secondVideoUrl);
-            }
-
-            // Process remaining songs immediately but in background
-            const remainingSongs = entries.slice(2);
-            for (const entry of remainingSongs) {
+    
+            let firstSongAdded = false;
+    
+            for (const entry of entries) {
                 const videoUrl = `https://www.youtube.com/watch?v=${entry.id}`;
-                try {
-                    const videoInfo = await this.getVideoInfo(videoUrl);
-                    if (videoInfo && videoInfo.duration <= CONFIG.MAX_SONG_DURATION) {
-                        this.queue.push({ url: videoUrl, info: videoInfo });
-                        console.log(`Added to queue: ${videoInfo.title}`);
-                    }
-                } catch (error) {
-                    console.error(`Error processing playlist song: ${error.message}`);
+                const videoInfo = await this.getVideoInfo(videoUrl);
+    
+                // Skip restricted videos (getVideoInfo returns null if restricted)
+                if (!videoInfo || videoInfo.duration > CONFIG.MAX_SONG_DURATION) {
+                    console.log(`Skipping video: ${videoUrl} (either restricted or too long)`);
                     continue;
                 }
+    
+                if (!this.isPlaying && !this.isDownloading && !firstSongAdded) {
+                    // Play the first song immediately and set firstSongAdded to true
+                    await this.play(videoUrl);
+                    firstSongAdded = true;
+                } else {
+                    // Queue subsequent songs
+                    this.queue.push({ url: videoUrl, info: videoInfo });
+                    console.log(`Added to queue: ${videoInfo.title}`);
+    
+                    // Start downloading the next song in queue if none is currently downloading
+                    if (!this.isDownloading && this.queue.length <= 2) {
+                        await this.downloadNext();
+                    }
+                }
             }
-
-            console.log(`Successfully added ${this.queue.length + 1} songs to queue`);
-            
-            // Start downloading next song if possible
-            if (!this.isDownloading && !this.isPlaying) {
-                await this.downloadAndPlay();
-            } else if (!this.isDownloading && this.queue.length > 0) {
-                await this.downloadNext();
-            }
-
+    
+            console.log(`Successfully added ${this.queue.length + (firstSongAdded ? 1 : 0)} songs to the queue`);
+    
         } catch (error) {
             console.error('Error adding playlist:', error);
         } finally {
             this.playlistProcessing = false;
         }
     }
+    
+    
+    
 
     async createAudioResource(url, outputFilePath = this.outputFiles[this.currentOutputIndex]) {
         return new Promise((resolve, reject) => {
             fs.promises.unlink(outputFilePath).catch(() => {}).then(() => {
                 console.log(`Starting download for: ${url}`);
-                // Add volume control to yt-dlp command using FFmpeg
-                const volumeValue = Math.floor(this.volume * CONFIG.VOLUME_MULTIPLIER);
-                const command = `yt-dlp -f bestaudio -o "${outputFilePath}" --postprocessor-args "-filter:a volume=${volumeValue/100}" "${url}"`;
+                const command = `yt-dlp -f bestaudio -o "${outputFilePath}" "${url}"`;
                 const ytDlpProcess = exec(command);
-
+    
                 ytDlpProcess.on('exit', async (code) => {
                     if (code === 0) {
                         console.log(`Downloaded: ${outputFilePath}`);
-                        const resource = createAudioResource(fs.createReadStream(outputFilePath));
-                        // Still set the Discord.js volume as a backup
-                        resource.volume?.setVolume(this.volume);
+                        const resource = createAudioResource(fs.createReadStream(outputFilePath), {
+                            inlineVolume: true  // Enable inline volume control on the resource
+                        });
+                        resource.volume?.setVolume(this.volume);  // Set the initial volume
                         resolve(resource);
                     } else {
                         console.error(`Download failed with code: ${code}`);
                         reject(`yt-dlp exited with code: ${code}`);
                     }
                 });
-
+    
                 ytDlpProcess.stderr.on('data', (data) => {
                     console.error(`yt-dlp stderr: ${data}`);
                 });
-
+    
                 ytDlpProcess.on('error', (error) => {
                     console.error(`Error executing command: ${error.message}`);
                     reject(`Error executing command: ${error.message}`);
@@ -353,24 +386,18 @@ class Player {
             });
         });
     }
+    
 
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
-        
-        // If currently playing, we need to re-download the current song with new volume
         if (this.player.state.status === AudioPlayerStatus.Playing) {
-            const currentSong = this.queue[0];
-            if (currentSong) {
-                this.createAudioResource(currentSong.url)
-                    .then(resource => {
-                        this.player.play(resource);
-                    })
-                    .catch(error => {
-                        console.error('Error updating volume:', error);
-                    });
+            const resource = this.player.state.resource;
+            if (resource?.volume) {
+                resource.volume.setVolume(this.volume);
             }
         }
     }
+    
 
     getQueue() {
         return this.queue.map(song => song.info.title);
