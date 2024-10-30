@@ -36,9 +36,19 @@ gameSocket(io);
 
 const commandHandler = require('./discord/handler/commandHandler');
 
-client.once('ready', () => {
+client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
     commandHandler.init(client);
+
+    // Disconnect from any voice channels on startup
+    for (const [guildId, voiceConnection] of client.voice.adapters) {
+        try {
+            await voiceConnection.disconnect();
+            console.log(`Disconnected from voice channel in guild: ${guildId}`);
+        } catch (error) {
+            console.error(`Error disconnecting from voice channel in guild ${guildId}:`, error);
+        }
+    }
 
     // Watch for changes in the config file
     const configPath = path.join(__dirname, 'discord/config.json');
@@ -46,8 +56,7 @@ client.once('ready', () => {
         if (eventType === 'change') {
             const { prefix } = JSON.parse(fs.readFileSync(configPath, 'utf8'));
             console.log(`Prefix updated to: ${prefix}`);
-            // You can emit an event here if you want to notify other parts of your application
-            // client.emit('prefixUpdated', prefix);
+            // Optionally emit an event here if needed
         }
     });
 });
@@ -92,16 +101,18 @@ process.on('SIGTERM', () => {
     });
 });
 
-// Handle unhandled promise rejections
+process.on('exit', () => {
+    console.log('Process exiting, disconnecting client...');
+    client.destroy(); // Ensure client disconnects on exit
+});
+
+
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    // Application specific logging, throwing an error, or other logic here
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
-    // Application specific logging, throwing an error, or other logic here
-    // Depending on the error, you might want to exit the process
-    // process.exit(1);
+    process.exit(1);
 });

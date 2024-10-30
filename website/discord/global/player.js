@@ -13,18 +13,38 @@ const path = require('path');
 const util = require('util');
 const execPromise = util.promisify(exec);
 
+const CONFIG = {
+    MAX_SONG_DURATION: 1200,
+    OUTPUT_DIR: './ytdlp-audio',
+    DEFAULT_VOLUME: 0.1,
+    MAX_RETRY_ATTEMPTS: 5,
+    INITIAL_RETRY_DELAY: 1000,
+    FILE_CLEANUP_INTERVAL: 60000,
+    DOWNLOAD_COOLDOWN: 1000,
+    VIDEO_INFO_TIMEOUT: 10000,
+    MAX_PLAYLIST_SONGS: 30,
+    VOLUME_MULTIPLIER: 100 // Added for yt-dlp volume control
+};
+
 class Player {
     constructor() {
         this.player = createAudioPlayer();
         this.queue = [];
         this.connection = null;
-        this.outputDir = './ytdlp-audio';
-        this.outputFiles = ['output1.mp3', 'output2.mp3'].map(file => path.join(this.outputDir, file));
+        this.outputFiles = ['output1.mp3', 'output2.mp3'].map(file => 
+            path.join(CONFIG.OUTPUT_DIR, file)
+        );
         this.currentOutputIndex = 0;
         this.isDownloading = false;
         this.isPlaying = false;
-        this.MAX_SONG_DURATION = 1200; // 20 minutes in seconds
+        this.volume = CONFIG.DEFAULT_VOLUME;
+        this.playlistProcessing = false;
 
+        this.setupEventListeners();
+        this.initializeOutputDirectory();
+    }
+
+    setupEventListeners() {
         this.player.on(AudioPlayerStatus.Playing, () => {
             console.log('Audio is now playing!');
             this.isPlaying = true;
@@ -37,11 +57,14 @@ class Player {
             this.playNext();
         });
 
-        // Ensure output directory exists
-        fs.promises.mkdir(this.outputDir, { recursive: true }).catch(console.error);
-        setInterval(() => this.cleanupFiles(), 60000);
+        setInterval(() => this.cleanupFiles(), CONFIG.FILE_CLEANUP_INTERVAL);
     }
-    
+
+    async initializeOutputDirectory() {
+        await fs.promises.mkdir(CONFIG.OUTPUT_DIR, { recursive: true })
+            .catch(console.error);
+    }
+
     async cleanupFiles() {
         if (!this.isPlaying && !this.isDownloading) {
             for (const file of this.outputFiles) {
@@ -50,29 +73,31 @@ class Player {
         }
     }
 
-    join(channel) {
+    async join(channel) {
         this.connection = joinVoiceChannel({
             channelId: channel.id,
             guildId: channel.guild.id,
             adapterCreator: channel.guild.voiceAdapterCreator,
         });
 
-        this.connection.on(VoiceConnectionStatus.Ready, () => {
-            console.log('The bot has connected to the channel!');
-            this.connection.subscribe(this.player);
-        });
+        return new Promise((resolve, reject) => {
+            this.connection.on(VoiceConnectionStatus.Ready, () => {
+                console.log('The bot has connected to the channel!');
+                this.connection.subscribe(this.player);
+                resolve();
+            });
 
-        this.connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-            try {
-                await Promise.race([
-                    entersState(this.connection, VoiceConnectionStatus.Signalling, 5_000),
-                    entersState(this.connection, VoiceConnectionStatus.Connecting, 5_000),
-                ]);
-                // Seems to be reconnecting to a new channel - ignore disconnect
-            } catch (error) {
-                // Seems to be a real disconnect which SHOULDN'T be recovered from
-                this.connection.destroy();
-            }
+            this.connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
+                try {
+                    await Promise.race([
+                        entersState(this.connection, VoiceConnectionStatus.Signalling, 5_000),
+                        entersState(this.connection, VoiceConnectionStatus.Connecting, 5_000),
+                    ]);
+                } catch (error) {
+                    this.connection.destroy();
+                    reject(error);
+                }
+            });
         });
     }
 
@@ -83,8 +108,8 @@ class Player {
             return;
         }
 
-        if (videoInfo.duration > this.MAX_SONG_DURATION) {
-            console.error(`Song exceeds ${this.MAX_SONG_DURATION} second limit: ${videoInfo.duration} seconds`);
+        if (videoInfo.duration > CONFIG.MAX_SONG_DURATION) {
+            console.error(`Song exceeds ${CONFIG.MAX_SONG_DURATION} second limit: ${videoInfo.duration} seconds`);
             return;
         }
 
@@ -110,6 +135,27 @@ class Player {
             console.error('Error getting video info:', error);
             return null;
         }
+    }
+
+    async getVideoInfoWithTimeout(url) {
+        return new Promise(async (resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new Error('Timed out getting video info'));
+            }, CONFIG.VIDEO_INFO_TIMEOUT);
+
+            try {
+                const info = await this.getVideoInfo(url);
+                clearTimeout(timer);
+                if (info) {
+                    resolve(info);
+                } else {
+                    reject(new Error('Failed to get video info'));
+                }
+            } catch (error) {
+                clearTimeout(timer);
+                reject(error);
+            }
+        });
     }
 
     async downloadAndPlay() {
@@ -142,6 +188,7 @@ class Player {
             try {
                 await fs.promises.access(nextOutputFile);
                 const resource = createAudioResource(nextOutputFile);
+                resource.volume?.setVolume(this.volume);
                 this.player.play(resource);
                 this.queue.shift();
                 this.tryDownloadNext();
@@ -153,33 +200,31 @@ class Player {
             this.handleEmptyQueue();
         }
     }
-    
+
     async handleEmptyQueue() {
         console.log('Queue is empty, nothing to play.');
         this.currentOutputIndex = 0;
-        // Delete both output files
         for (const file of this.outputFiles) {
             await this.deleteFileWithRetry(file);
         }
     }
 
-    async deleteFileWithRetry(file, maxRetries = 5, initialDelay = 1000) {
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
+    async deleteFileWithRetry(file) {
+        for (let attempt = 0; attempt < CONFIG.MAX_RETRY_ATTEMPTS; attempt++) {
             try {
-                await new Promise(resolve => setTimeout(resolve, initialDelay * Math.pow(2, attempt)));
+                await new Promise(resolve => 
+                    setTimeout(resolve, CONFIG.INITIAL_RETRY_DELAY * Math.pow(2, attempt))
+                );
                 await fs.promises.access(file, fs.constants.F_OK);
                 await fs.promises.unlink(file);
                 console.log(`Deleted existing file: ${file}`);
                 return;
             } catch (error) {
-                if (error.code === 'ENOENT') {
-                    // File doesn't exist, no need to delete
-                    return;
-                }
+                if (error.code === 'ENOENT') return;
                 console.log(`Attempt ${attempt + 1} to delete ${file} failed: ${error.message}`);
             }
         }
-        console.error(`Failed to delete ${file} after ${maxRetries} attempts`);
+        console.error(`Failed to delete ${file} after ${CONFIG.MAX_RETRY_ATTEMPTS} attempts`);
     }
 
     async tryDownloadNext() {
@@ -200,126 +245,107 @@ class Player {
             console.error('Error downloading next song:', err);
         } finally {
             this.isDownloading = false;
-            // Add a small delay before allowing the next download
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, CONFIG.DOWNLOAD_COOLDOWN));
         }
     }
 
-    async addPlaylist(url, maxSongs = 30) {
+    async addPlaylist(url, maxsongs = 30) {
+        if (this.playlistProcessing) {
+            console.log('Already processing a playlist, please wait...');
+            return;
+        }
+
+        CONFIG.MAX_PLAYLIST_SONGS = maxsongs;
+
+        this.playlistProcessing = true;
         try {
             const { stdout } = await execPromise(`yt-dlp -J --flat-playlist "${url}"`);
             const playlistInfo = JSON.parse(stdout);
-    
+
             if (!playlistInfo.entries || playlistInfo.entries.length === 0) {
                 console.error('No videos found in the playlist');
                 return;
             }
-    
-            const songsToAdd = playlistInfo.entries.slice(0, maxSongs);
-            let validSongs = [];
-    
-            for (const entry of songsToAdd) {
+
+            const entries = playlistInfo.entries.slice(0, CONFIG.MAX_PLAYLIST_SONGS);
+            console.log(`Processing playlist with ${entries.length} songs...`);
+
+            // Process first song immediately
+            const firstEntry = entries[0];
+            const firstVideoUrl = `https://www.youtube.com/watch?v=${firstEntry.id}`;
+            const firstVideoInfo = await this.getVideoInfo(firstVideoUrl);
+            
+            if (firstVideoInfo && firstVideoInfo.duration <= CONFIG.MAX_SONG_DURATION) {
+                await this.play(firstVideoUrl);
+            }
+
+            // Process second song immediately
+            const secondEntry = entries[1];
+            const secondVideoUrl = `https://www.youtube.com/watch?v=${secondEntry.id}`;
+            const secondVideoInfo = await this.getVideoInfo(secondVideoUrl);
+            
+            if (secondVideoInfo && secondVideoInfo.duration <= CONFIG.MAX_SONG_DURATION) {
+                await this.play(secondVideoUrl);
+            }
+
+            // Process remaining songs immediately but in background
+            const remainingSongs = entries.slice(2);
+            for (const entry of remainingSongs) {
                 const videoUrl = `https://www.youtube.com/watch?v=${entry.id}`;
-                const videoInfo = await this.getVideoInfo(videoUrl);
-                if (videoInfo && videoInfo.duration <= this.MAX_SONG_DURATION) {
-                    validSongs.push({ url: videoUrl, info: videoInfo });
+                try {
+                    const videoInfo = await this.getVideoInfo(videoUrl);
+                    if (videoInfo && videoInfo.duration <= CONFIG.MAX_SONG_DURATION) {
+                        this.queue.push({ url: videoUrl, info: videoInfo });
+                        console.log(`Added to queue: ${videoInfo.title}`);
+                    }
+                } catch (error) {
+                    console.error(`Error processing playlist song: ${error.message}`);
+                    continue;
                 }
             }
-    
-            console.log(`Found ${validSongs.length} valid songs in the playlist`);
-    
-            // Add all valid songs to the queue
-            this.queue.push(...validSongs);
-    
-            // Download and play the first song if not already playing
-            if (!this.isPlaying && !this.isDownloading) {
+
+            console.log(`Successfully added ${this.queue.length + 1} songs to queue`);
+            
+            // Start downloading next song if possible
+            if (!this.isDownloading && !this.isPlaying) {
                 await this.downloadAndPlay();
-            }
-    
-            // Download the second song if available and not already downloading
-            if (this.queue.length > 1 && !this.isDownloading) {
+            } else if (!this.isDownloading && this.queue.length > 0) {
                 await this.downloadNext();
             }
-    
-            console.log(`Added ${validSongs.length} songs from the playlist to the queue`);
+
         } catch (error) {
             console.error('Error adding playlist:', error);
+        } finally {
+            this.playlistProcessing = false;
         }
-    }
-
-    async join(channel) {
-        this.connection = joinVoiceChannel({
-            channelId: channel.id,
-            guildId: channel.guild.id,
-            adapterCreator: channel.guild.voiceAdapterCreator,
-        });
-    
-        return new Promise((resolve, reject) => {
-            this.connection.on(VoiceConnectionStatus.Ready, () => {
-                console.log('The bot has connected to the channel!');
-                this.connection.subscribe(this.player);
-                resolve();
-            });
-    
-            this.connection.on(VoiceConnectionStatus.Disconnected, async (oldState, newState) => {
-                try {
-                    await Promise.race([
-                        entersState(this.connection, VoiceConnectionStatus.Signalling, 5_000),
-                        entersState(this.connection, VoiceConnectionStatus.Connecting, 5_000),
-                    ]);
-                    // Seems to be reconnecting to a new channel - ignore disconnect
-                } catch (error) {
-                    // Seems to be a real disconnect which SHOULDN'T be recovered from
-                    this.connection.destroy();
-                    reject(error);
-                }
-            });
-        });
-    }
-    
-    async getVideoInfoWithTimeout(url, timeout) {
-        return new Promise(async (resolve, reject) => {
-            const timer = setTimeout(() => {
-                reject(new Error('Timed out getting video info'));
-            }, timeout);
-    
-            try {
-                const info = await this.getVideoInfo(url);
-                clearTimeout(timer);
-                if (info) {
-                    resolve(info);
-                } else {
-                    reject(new Error('Failed to get video info'));
-                }
-            } catch (error) {
-                clearTimeout(timer);
-                reject(error);
-            }
-        });
     }
 
     async createAudioResource(url, outputFilePath = this.outputFiles[this.currentOutputIndex]) {
         return new Promise((resolve, reject) => {
             fs.promises.unlink(outputFilePath).catch(() => {}).then(() => {
                 console.log(`Starting download for: ${url}`);
-                const command = `yt-dlp -f bestaudio -o "${outputFilePath}" "${url}"`;
+                // Add volume control to yt-dlp command using FFmpeg
+                const volumeValue = Math.floor(this.volume * CONFIG.VOLUME_MULTIPLIER);
+                const command = `yt-dlp -f bestaudio -o "${outputFilePath}" --postprocessor-args "-filter:a volume=${volumeValue/100}" "${url}"`;
                 const ytDlpProcess = exec(command);
-    
+
                 ytDlpProcess.on('exit', async (code) => {
                     if (code === 0) {
                         console.log(`Downloaded: ${outputFilePath}`);
-                        const audioResource = createAudioResource(fs.createReadStream(outputFilePath));
-                        resolve(audioResource);
+                        const resource = createAudioResource(fs.createReadStream(outputFilePath));
+                        // Still set the Discord.js volume as a backup
+                        resource.volume?.setVolume(this.volume);
+                        resolve(resource);
                     } else {
                         console.error(`Download failed with code: ${code}`);
                         reject(`yt-dlp exited with code: ${code}`);
                     }
                 });
-    
+
                 ytDlpProcess.stderr.on('data', (data) => {
                     console.error(`yt-dlp stderr: ${data}`);
                 });
-    
+
                 ytDlpProcess.on('error', (error) => {
                     console.error(`Error executing command: ${error.message}`);
                     reject(`Error executing command: ${error.message}`);
@@ -328,13 +354,21 @@ class Player {
         });
     }
 
-    skip() {
-        if (this.isPlaying) {
-            this.player.stop();
-            this.isPlaying = false;
-            this.playNext();
-        } else {
-            console.log("No song is currently playing.");
+    setVolume(volume) {
+        this.volume = Math.max(0, Math.min(1, volume));
+        
+        // If currently playing, we need to re-download the current song with new volume
+        if (this.player.state.status === AudioPlayerStatus.Playing) {
+            const currentSong = this.queue[0];
+            if (currentSong) {
+                this.createAudioResource(currentSong.url)
+                    .then(resource => {
+                        this.player.play(resource);
+                    })
+                    .catch(error => {
+                        console.error('Error updating volume:', error);
+                    });
+            }
         }
     }
 
