@@ -1,8 +1,14 @@
+const { isNearReset, getResetMessage } = require('../utils');
+
 module.exports = {
     init: async (client) => {
         client.on('interactionCreate', async interaction => {
             if (!interaction.isChatInputCommand()) return;
             
+            if (isNearReset()) {
+                return interaction.reply({ content: getResetMessage(), ephemeral: true });
+            }
+
             const command = client.slashCommands.get(interaction.commandName);
             if (!command) return;
             
