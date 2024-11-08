@@ -73,7 +73,7 @@ client.on('error', (err) => {
 });
 
 // Delete the previous output files if they exist
-const outputFiles = ['./ytdlp-audio/output1.mp3', './ytdlp-audio/output2.mp3', './ytdlp-audio/output3.mp3'];
+const outputFiles = ['./ytdlp-audio/output1.mp3', './ytdlp-audio/output2.mp3'];
 outputFiles.forEach(file => {
     if (fs.existsSync(file)) {
         fs.unlinkSync(file); // Delete the file
