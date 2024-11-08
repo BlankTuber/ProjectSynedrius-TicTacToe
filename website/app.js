@@ -3,25 +3,25 @@ const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path');
 const { Client, GatewayIntentBits } = require('discord.js');
-require('dotenv').config(); // Load environment variables
-const fs = require('fs');
+require('dotenv').config();
+const fs = require('fs').promises;
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.MessageContent, // Add this intent for prefix commands
-        GatewayIntentBits.GuildMessages // Add this intent for prefix commands
-    ]
+intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessages
+]
 });
 
 // Middleware
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
+app.use(express.urlencoded({ extended: true }));
 app.set('view engine', 'ejs');
 
 // Routes
@@ -36,14 +36,33 @@ gameSocket(io);
 
 const commandHandler = require('./discord/handler/commandHandler');
 
+// Function to clean up ytdlp-audio directory
+async function cleanupYtdlpAudio() {
+    const directory = './ytdlp-audio';
+    try {
+        const files = await fs.readdir(directory);
+        for (const file of files) {
+        if (file !== '.gitignore') {
+            await fs.unlink(path.join(directory, file));
+            console.log(`Deleted file: ${file}`);
+        }
+        }
+    } catch (error) {
+        console.error('Error cleaning up ytdlp-audio directory:', error);
+    }
+}
+
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}`);
     commandHandler.init(client);
 
+    // Clean up ytdlp-audio directory on startup
+    await cleanupYtdlpAudio();
+
     // Disconnect from any voice channels on startup
     for (const [guildId, voiceConnection] of client.voice.adapters) {
         try {
-            await voiceConnection.disconnect();
+        await voiceConnection.disconnect();
             console.log(`Disconnected from voice channel in guild: ${guildId}`);
         } catch (error) {
             console.error(`Error disconnecting from voice channel in guild ${guildId}:`, error);
@@ -62,7 +81,7 @@ client.once('ready', async () => {
 });
 
 client.login(process.env.BOT_TOKEN).catch(err => {
-    console.error('Failed to login:', err); // Log login error
+    console.error('Failed to login:', err);
 });
 
 app.set('discordClient', client);
@@ -71,18 +90,6 @@ client.io = io;
 client.on('error', (err) => {
     console.error('A Discord error occurred:', err);
 });
-
-// Delete the previous output files if they exist
-const outputFiles = ['./ytdlp-audio/output1.mp3', './ytdlp-audio/output2.mp3'];
-outputFiles.forEach(file => {
-    if (fs.existsSync(file)) {
-        fs.unlinkSync(file); // Delete the file
-        console.log(`Deleted existing file: ${file}`);
-    }
-});
-
-// const discordSocket = require('./sockets/discordSocket');
-// discordSocket(io);
 
 const PORT = 8080;
 server.listen(PORT, () => {
@@ -94,24 +101,22 @@ process.on('SIGTERM', () => {
     server.close(() => {
         console.log('HTTP server closed');
         io.close(() => {
-            console.log('Socket.IO server closed');
-            client.destroy();
-            process.exit(0);
+        console.log('Socket.IO server closed');
+        client.destroy();
+        process.exit(0);
         });
     });
 });
 
 process.on('exit', () => {
     console.log('Process exiting, disconnecting client...');
-    client.destroy(); // Ensure client disconnects on exit
+    client.destroy();
 });
-
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     process.exit(1);

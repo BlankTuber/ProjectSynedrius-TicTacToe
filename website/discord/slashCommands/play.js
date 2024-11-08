@@ -1,20 +1,25 @@
 const { SlashCommandBuilder } = require('discord.js');
 const player = require('../global/player');
+const { exec } = require('child_process');
+const util = require('util');
+
+const execPromise = util.promisify(exec);
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('play')
-        .setDescription('Play a song from a URL')
+        .setDescription('Play a song from a URL or search for a song')
         .addStringOption(option =>
-            option.setName('url')
-                .setDescription('The URL of the song to play')
+            option.setName('input')
+                .setDescription('The URL of the song or a search query')
                 .setRequired(true)),
+
     async execute(interaction) {
         try {
-            // Defer the reply immediately to prevent interaction timeout
             await interaction.deferReply();
             
-            const url = interaction.options.getString('url');
+            const input = interaction.options.getString('input');
+            const isUrl = this.isValidUrl(input);
 
             if (!interaction.member.voice.channel) {
                 return interaction.editReply('You need to be in a voice channel to play a song!');
@@ -26,21 +31,40 @@ module.exports = {
                 await player.join(channel);
             }
 
-            await player.play(url);
-            return interaction.editReply(`Added to queue: **${url}**`);
-            
+            if (isUrl) {
+                await player.play(input);
+                return interaction.editReply(`Added to queue: **${input}**`);
+            } else {
+                const result = await this.searchYouTube(input);
+                if (!result) {
+                    return interaction.editReply('No results found for your search.');
+                }
+                await player.play(`https://music.youtube.com/watch?v=${result.id}`);
+                return interaction.editReply(`Added to queue: **${result.title}**`);
+            }
         } catch (error) {
             console.error('Error in play command:', error);
-            // If the interaction is still valid, try to send an error message
-            try {
-                if (interaction.deferred) {
-                    await interaction.editReply('There was an error while executing the command!');
-                } else {
-                    await interaction.reply({ content: 'There was an error while executing the command!', ephemeral: true });
-                }
-            } catch (e) {
-                console.error('Error sending error message:', e);
-            }
+            await interaction.editReply('There was an error while executing the command!');
         }
     },
+
+    isValidUrl(string) {
+        try {
+            new URL(string);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    },
+
+    async searchYouTube(query) {
+        try {
+            const command = `yt-dlp -j "ytsearch:${query}"`;
+            const { stdout } = await execPromise(command);
+            return JSON.parse(stdout.trim());
+        } catch (error) {
+            console.error(`Error searching YouTube: ${error.message}`);
+            return null;
+        }
+    }
 };
