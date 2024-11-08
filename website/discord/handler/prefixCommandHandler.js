@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { isNearReset, getResetMessage } = require('../utils');
+const { isNearReset, getResetMessage } = require('../utils/isNearReset');
 
 module.exports = {
     init: (client) => {

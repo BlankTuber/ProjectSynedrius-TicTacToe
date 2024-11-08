@@ -1,4 +1,4 @@
-const { isNearReset, getResetMessage } = require('../utils');
+const { isNearReset, getResetMessage } = require('../utils/isNearReset');
 
 module.exports = {
     init: async (client) => {
