@@ -13,7 +13,7 @@ const CONFIG = {
     INITIAL_RETRY_DELAY: 1000,
     FILE_CLEANUP_INTERVAL: 60000,
     DOWNLOAD_COOLDOWN: 2000,
-    VIDEO_INFO_TIMEOUT: 10000,
+    VIDEO_INFO_TIMEOUT: 20000,
     MAX_PLAYLIST_SONGS: 30,
     VOLUME_MULTIPLIER: 100,
     INACTIVITY_TIMEOUT: 5 * 60 * 1000
@@ -165,12 +165,12 @@ class Player {
             this.startInactivityTimer();
             return;
         }
-
+    
         try {
             // Get the index for the file we want to play
             const nextIndex = (this.currentOutputIndex + 1) % 2;
             const nextFile = this.outputFiles[nextIndex];
-            
+    
             // Check if the next file exists before playing
             try {
                 await fs.access(nextFile);
@@ -179,16 +179,16 @@ class Player {
                 });
                 resource.volume.setVolume(this.volume);
                 this.currentResource = resource;
-                
+    
                 // Update indices and start playing
                 const oldIndex = this.currentOutputIndex;
                 this.currentOutputIndex = nextIndex;
                 this.player.play(resource);
                 this.queue.shift();
-
-                // Clean up the old file that just finished playing
+    
+                // Wait for 1 second before deleting the old file
                 setTimeout(() => this.safeDeleteFile(this.outputFiles[oldIndex]), 1000);
-
+    
                 // Try to download the next song if there are more in queue
                 if (this.queue.length > 0) {
                     setTimeout(() => this.tryDownloadNext(), 1000);

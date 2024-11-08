@@ -1,11 +1,21 @@
+# Use Node.js image as the base and install Python manually
 FROM node:20-alpine
 
+# Install Python and other dependencies
+RUN apk add --no-cache python3 py3-pip
+
+# Set the working directory
 WORKDIR /usr/src/app
 
+# Copy package.json and package-lock.json, then install Node.js dependencies
 COPY package*.json ./
-
 RUN npm install
 
+# Install yt-dlp using pip
+RUN pip install --no-cache-dir yt-dlp
+
+# Copy the entire app source code to the container
 COPY . .
 
+# Start the application
 CMD [ "node", "app.js" ]
